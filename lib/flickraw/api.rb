@@ -2,11 +2,11 @@ module FlickRaw
   END_POINT='http://api.flickr.com/services'.freeze
   END_POINT2='http://www.flickr.com/services'.freeze
   END_POINT_SECURE='https://secure.flickr.com/services'.freeze
-  
+
   FLICKR_OAUTH_REQUEST_TOKEN=(END_POINT2 + '/oauth/request_token').freeze
   FLICKR_OAUTH_AUTHORIZE=(END_POINT2 + '/oauth/authorize').freeze
   FLICKR_OAUTH_ACCESS_TOKEN=(END_POINT2 + '/oauth/access_token').freeze
-  
+
   FLICKR_OAUTH_REQUEST_TOKEN_SECURE=(END_POINT_SECURE + '/oauth/request_token').freeze
   FLICKR_OAUTH_AUTHORIZE_SECURE=(END_POINT_SECURE + '/oauth/authorize').freeze
   FLICKR_OAUTH_ACCESS_TOKEN_SECURE=(END_POINT_SECURE + '/oauth/access_token').freeze
@@ -14,7 +14,7 @@ module FlickRaw
   REST_PATH=(END_POINT + '/rest/').freeze
   UPLOAD_PATH=(END_POINT + '/upload/').freeze
   REPLACE_PATH=(END_POINT + '/replace/').freeze
-  
+
   REST_PATH_SECURE=(END_POINT_SECURE + '/rest/').freeze
   UPLOAD_PATH_SECURE=(END_POINT_SECURE + '/upload/').freeze
   REPLACE_PATH_SECURE=(END_POINT_SECURE + '/replace/').freeze
@@ -28,10 +28,10 @@ module FlickRaw
   class Flickr < Request
     # Authenticated access token
     attr_accessor :access_token
-    
+
     # Authenticated access token secret
     attr_accessor :access_secret
-    
+
     def self.build(methods); methods.each { |m| build_request m } end
 
     def initialize # :nodoc:
@@ -40,11 +40,11 @@ module FlickRaw
       @oauth_consumer.proxy = FlickRaw.proxy
       @oauth_consumer.user_agent = USER_AGENT
       @access_token = @access_secret = nil
-      
+
       Flickr.build(call('flickr.reflection.getMethods')) if Flickr.flickr_objects.empty?
       super self
     end
-    
+
     # This is the central method. It does the actual request to the flickr server.
     #
     # Raises FailedResponse if the response status is _failed_.
@@ -62,7 +62,7 @@ module FlickRaw
       flickr_oauth_request_token = FlickRaw.secure ? FLICKR_OAUTH_REQUEST_TOKEN_SECURE : FLICKR_OAUTH_REQUEST_TOKEN
       @oauth_consumer.request_token(flickr_oauth_request_token, args)
     end
-    
+
     # Get the oauth authorize url.
     #
     #  auth_url = flickr.get_authorize_url(token['oauth_token'], :perms => 'delete')
@@ -114,14 +114,14 @@ module FlickRaw
           code = response[/code="([^"]+)"/, 1]
           raise FailedResponse.new(msg, code, req)
         end
-        
+
         type = response[/<(\w+)/, 1]
         h = {
           "secret" => response[/secret="([^"]+)"/, 1],
           "originalsecret" => response[/originalsecret="([^"]+)"/, 1],
           "_content" => response[/>([^<]+)<\//, 1]
         }.delete_if {|k,v| v.nil? }
-        
+
         Response.build h, type
       else
         json = JSON.load(response.empty? ? "{}" : response)
@@ -141,7 +141,7 @@ module FlickRaw
         args['photo'] = open(file, 'rb')
         close_after = true
       end
-      
+
       http_response = @oauth_consumer.post_multipart(method, @access_secret, {:oauth_token => @access_token}.merge(oauth_args), args)
       args['photo'].close if close_after
       process_response(method, http_response.body)
@@ -151,16 +151,18 @@ module FlickRaw
   class << self
     # Your flickr API key, see http://www.flickr.com/services/api/keys for more information
     attr_accessor :api_key
-    
+
     # The shared secret of _api_key_, see http://www.flickr.com/services/api/keys for more information
     attr_accessor :shared_secret
-    
+
     # Use a proxy
     attr_accessor :proxy
-    
+
     # Use ssl connection
     attr_accessor :secure
-    
+
+    attr_writer :read_timeout
+
     BASE58_ALPHABET="123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".freeze
     def base58(id)
       id = id.to_i
@@ -202,6 +204,10 @@ module FlickRaw
         else
           r.owner
         end + "/"
+    end
+
+    def read_timeout
+      @read_timeout || 20
     end
   end
 end
